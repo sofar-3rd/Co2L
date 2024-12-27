@@ -13,10 +13,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Sampler
 from scipy.stats import multivariate_normal
+from datetime import datetime, timedelta
+from sklearn.metrics import confusion_matrix
 
 
 class TwoCropTransform:
     """Create two crops of the same image"""
+
     def __init__(self, transform):
         self.transform = transform
 
@@ -26,6 +29,7 @@ class TwoCropTransform:
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -40,6 +44,22 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+def f1_score(precision, recall):
+    return 2 * precision * recall / float(precision + recall)
+
+
+def get_model_stats(y, y_pred):
+    tn, fp, fn, tp = confusion_matrix(y, y_pred).ravel()
+    acc = (tp + tn) / float(tp + tn + fp + fn)
+    fpr = fp / float(fp + tn)
+    tpr = tp / float(tp + fn)
+    tnr = tn / float(fp + tn)
+    fnr = fn / float(fn + tp)
+    precision = tp / float(tp + fp)
+    recall = tp / float(tp + fn)
+    return tpr, tnr, fpr, fnr, acc, precision, f1_score(precision, tpr)
 
 
 def accuracy(output, target, topk=(1,)):
@@ -92,8 +112,16 @@ def set_optimizer(opt, model):
     return optimizer
 
 
+def set_cls_optimizer(opt, model):
+    optimizer = optim.SGD(model.parameters(),
+                          lr=opt.cls_learning_rate,
+                          momentum=opt.cls_momentum,
+                          weight_decay=opt.cls_weight_decay)
+    return optimizer
+
+
 def save_model(model, optimizer, opt, epoch, save_file):
-    print('==> Saving...'+save_file)
+    print('==> Saving...' + save_file)
     state = {
         'opt': opt,
         'model': model.state_dict(),
@@ -113,3 +141,28 @@ def load_model(model, optimizer, save_file):
     del loaded
 
     return model, optimizer
+
+
+def generate_months(start_month, end_month):
+    # 将输入的月份字符串转换为日期对象
+    start_date = datetime.strptime(start_month, "%Y-%m")
+    end_date = datetime.strptime(end_month, "%Y-%m")
+
+    # 创建一个空的月份列表
+    months_list = []
+
+    # 从开始月份到结束月份，逐月添加到列表
+    while start_date <= end_date:
+        months_list.append(start_date.strftime("%Y-%m"))
+        # 将日期加上一个月
+        start_date = start_date.replace(day=28) + timedelta(days=4)  # 使日期跳转到下一个月的1号
+
+    if months_list[-1] != end_month:
+        months_list.append(end_month)
+
+    return months_list
+
+
+# 返回当前时间字符串
+def current_time():
+    return datetime.now().strftime("%m%d%H%M")

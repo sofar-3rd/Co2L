@@ -1,7 +1,7 @@
-'''
+"""
 The original source code can be found in
 https://github.com/HobbitLong/SupContrast/blob/master/main_supcon.py
-'''
+"""
 
 from __future__ import print_function
 
@@ -28,7 +28,6 @@ from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model, load_model
 from networks.mlp import SupConMLP
 from losses_negative_only import SupConLoss
-
 
 try:
     import apex
@@ -93,8 +92,6 @@ def parse_option():
     parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
     parser.add_argument('--size', type=int, default=28, help='parameter for RandomResizedCrop')
 
-
-
     # temperature
     parser.add_argument('--temp', type=float, default=0.07,
                         help='temperature for loss function')
@@ -113,19 +110,17 @@ def parse_option():
 
     opt.save_freq = opt.epochs // 2
 
-
     if opt.dataset == 'r-mnist':
         opt.n_cls = 10
         opt.cls_per_task = 10
     else:
         pass
 
-
     # check if dataset is path that passed required arguments
     if opt.dataset == 'path':
         assert opt.data_folder is not None \
-            and opt.mean is not None \
-            and opt.std is not None
+               and opt.mean is not None \
+               and opt.std is not None
 
     # set the path according to the environment
     if opt.data_folder is None:
@@ -139,7 +134,7 @@ def parse_option():
     for it in iterations:
         opt.lr_decay_epochs.append(int(it))
 
-    opt.model_name = '{}_{}_lr_{}_decay_{}_bsz_{}_temp_{}_trial_{}_{}_{}'.\
+    opt.model_name = '{}_{}_lr_{}_decay_{}_bsz_{}_temp_{}_trial_{}_{}_{}'. \
         format(opt.dataset, opt.model, opt.learning_rate,
                opt.weight_decay, opt.batch_size, opt.temp,
                opt.trial,
@@ -148,7 +143,6 @@ def parse_option():
 
     if opt.cosine:
         opt.model_name = '{}_cosine'.format(opt.model_name)
-
 
     opt.tb_folder = os.path.join(opt.tb_path, opt.model_name)
     if not os.path.isdir(opt.tb_folder):
@@ -166,14 +160,14 @@ def parse_option():
 
 
 def set_replay_samples(opt, model, prev_indices=None, prev_degrees=None, degree_list=None):
-
-
     class IdxDataset(Dataset):
         def __init__(self, dataset, indices):
             self.dataset = dataset
             self.indices = indices
+
         def __len__(self):
             return len(self.dataset)
+
         def __getitem__(self, idx):
             return self.indices[idx], self.dataset[idx]
 
@@ -182,11 +176,9 @@ def set_replay_samples(opt, model, prev_indices=None, prev_degrees=None, degree_
         transforms.ToTensor(),
     ])
 
-
     val_dataset = datasets.MNIST(root=opt.data_folder,
-                                         transform=val_transform,
-                                         download=True)
-
+                                 transform=val_transform,
+                                 download=True)
 
     observed_so_far_cnt = 0
     if opt.target_task == 0:
@@ -202,7 +194,7 @@ def set_replay_samples(opt, model, prev_indices=None, prev_degrees=None, degree_
 
             for idx in range(len(val_dataset)):
                 p = random.random()
-                p = random.randint(0, observed_so_far_cnt-1)
+                p = random.randint(0, observed_so_far_cnt - 1)
                 if p < opt.mem_size:
                     ret_indices[p] = idx
                     ret_degrees[p] = degree_list[-1]
@@ -217,8 +209,10 @@ def set_loader(opt, replay_indices=None, replay_degrees=None):
         def __init__(self, dataset, domain_id):
             self.dataset = dataset
             self.domain_id = domain_id
+
         def __len__(self):
             return len(self.dataset)
+
         def __getitem__(self, idx):
             return self.domain_id, self.dataset[idx]
 
@@ -227,7 +221,7 @@ def set_loader(opt, replay_indices=None, replay_degrees=None):
         Defines a fixed rotation for a numpy array.
         """
 
-        def __init__(self, deg_min = 0, deg_max = 180):
+        def __init__(self, deg_min=0, deg_max=180):
             """
             Initializes the rotation with a random angle.
             :param deg_min: lower extreme of the possible random angle
@@ -269,9 +263,9 @@ def set_loader(opt, replay_indices=None, replay_degrees=None):
     rot = Rotation()
     print(rot.degrees)
     train_transform = transforms.Compose([
-      rot,
-      transforms.RandomResizedCrop(size=28, scale=(0.7, 1.)),
-      transforms.ToTensor()
+        rot,
+        transforms.RandomResizedCrop(size=28, scale=(0.7, 1.)),
+        transforms.ToTensor()
     ])
 
     if opt.target_task > 0:
@@ -281,23 +275,24 @@ def set_loader(opt, replay_indices=None, replay_degrees=None):
             mask = np.array(replay_degrees) == degree
             masked_replay_indices = np.array(replay_indices)[mask]
 
-
             prev_train_dataset = datasets.MNIST(root=opt.data_folder,
                                                 transform=TwoCropTransform(
-                                                  transforms.Compose([
-                                                    FixedRotation(degree),
-                                                    transforms.RandomResizedCrop(size=28, scale=(0.7, 1.)),
-                                                    transforms.ToTensor()
-                                                  ])
+                                                    transforms.Compose([
+                                                        FixedRotation(degree),
+                                                        transforms.RandomResizedCrop(size=28, scale=(0.7, 1.)),
+                                                        transforms.ToTensor()
+                                                    ])
                                                 ),
                                                 download=True)
             subsets.append(DomainDataset(Subset(prev_train_dataset, masked_replay_indices.tolist()), domain_id))
-        _train_dataset = DomainDataset(datasets.MNIST(root=opt.data_folder, transform=TwoCropTransform(train_transform), download=True), len(unique_degrees))
+        _train_dataset = DomainDataset(
+            datasets.MNIST(root=opt.data_folder, transform=TwoCropTransform(train_transform), download=True),
+            len(unique_degrees))
 
         train_dataset = ConcatDataset([*subsets, _train_dataset])
     else:
-        train_dataset = DomainDataset(datasets.MNIST(root=opt.data_folder, transform=TwoCropTransform(train_transform), download=True), 0)
-
+        train_dataset = DomainDataset(
+            datasets.MNIST(root=opt.data_folder, transform=TwoCropTransform(train_transform), download=True), 0)
 
     train_sampler = None
     train_loader = torch.utils.data.DataLoader(
@@ -307,12 +302,12 @@ def set_loader(opt, replay_indices=None, replay_degrees=None):
     return train_loader, rot.degrees
 
 
-
 def set_model(opt):
     model = SupConMLP()
     criterion = SupConLoss(temperature=opt.temp)
 
     # enable synchronized Batch Normalization
+    # 多GPU同步归一化
     if opt.syncBN:
         model = apex.parallel.convert_syncbn_model(model)
 
@@ -327,8 +322,6 @@ def set_model(opt):
 
 
 def train(train_loader, model, model2, criterion, optimizer, epoch, opt):
-
-
     """one epoch training"""
     model.train()
 
@@ -371,12 +364,14 @@ def train(train_loader, model, model2, criterion, optimizer, epoch, opt):
             logits_max1, _ = torch.max(features1_sim * logits_mask, dim=1, keepdim=True)
             features1_sim = features1_sim - logits_max1.detach()
             row_size = features1_sim.size(0)
-            logits1 = torch.exp(features1_sim[logits_mask.bool()].view(row_size, -1)) / torch.exp(features1_sim[logits_mask.bool()].view(row_size, -1)).sum(dim=1, keepdim=True)
+            logits1 = torch.exp(features1_sim[logits_mask.bool()].view(row_size, -1)) / torch.exp(
+                features1_sim[logits_mask.bool()].view(row_size, -1)).sum(dim=1, keepdim=True)
 
         # Asym SupCon
         f1, f2 = torch.split(features, [bsz, bsz], dim=0)
         features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-        loss = criterion(features, labels, target_labels=list(range(opt.target_task*opt.cls_per_task, (opt.target_task+1)*opt.cls_per_task)))
+        loss = criterion(features, labels, target_labels=list(
+            range(opt.target_task * opt.cls_per_task, (opt.target_task + 1) * opt.cls_per_task)))
 
         # IRD (past)
         if opt.target_task > 0:
@@ -384,9 +379,10 @@ def train(train_loader, model, model2, criterion, optimizer, epoch, opt):
                 features2_prev_task = model2(images)
 
                 features2_sim = torch.div(torch.matmul(features2_prev_task, features2_prev_task.T), opt.past_temp)
-                logits_max2, _ = torch.max(features2_sim*logits_mask, dim=1, keepdim=True)
+                logits_max2, _ = torch.max(features2_sim * logits_mask, dim=1, keepdim=True)
                 features2_sim = features2_sim - logits_max2.detach()
-                logits2 = torch.exp(features2_sim[logits_mask.bool()].view(row_size, -1)) /  torch.exp(features2_sim[logits_mask.bool()].view(row_size, -1)).sum(dim=1, keepdim=True)
+                logits2 = torch.exp(features2_sim[logits_mask.bool()].view(row_size, -1)) / torch.exp(
+                    features2_sim[logits_mask.bool()].view(row_size, -1)).sum(dim=1, keepdim=True)
 
             loss_distill = (-logits2 * torch.log(logits1)).sum(1).mean()
             loss += opt.distill_power * loss_distill
@@ -399,19 +395,18 @@ def train(train_loader, model, model2, criterion, optimizer, epoch, opt):
         loss.backward()
         optimizer.step()
 
-
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
 
         # print info
-        if (idx + 1) % opt.print_freq == 0 or idx +1 == len(train_loader):
+        if (idx + 1) % opt.print_freq == 0 or idx + 1 == len(train_loader):
             print('Train: [{0}][{1}/{2}]\t'
                   'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
-                   epoch, idx + 1, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses))
+                epoch, idx + 1, len(train_loader), batch_time=batch_time,
+                data_time=data_time, loss=losses))
             sys.stdout.flush()
 
     return losses.avg, model2
@@ -435,16 +430,20 @@ def main():
     degree_list = []
 
     if opt.resume_target_task is not None:
-        load_file = os.path.join(opt.save_folder, 'last_{policy}_{target_task}.pth'.format(policy=opt.replay_policy ,target_task=opt.resume_target_task))
+        load_file = os.path.join(opt.save_folder, 'last_{policy}_{target_task}.pth'.format(policy=opt.replay_policy,
+                                                                                           target_task=opt.resume_target_task))
         model, optimizer = load_model(model, optimizer, load_file)
         replay_indices = np.load(
-          os.path.join(opt.log_folder, 'replay_indices_{policy}_{target_task}.npy'.format(policy=opt.replay_policy ,target_task=opt.resume_target_task))
+            os.path.join(opt.log_folder, 'replay_indices_{policy}_{target_task}.npy'.format(policy=opt.replay_policy,
+                                                                                            target_task=opt.resume_target_task))
         ).tolist()
         replay_degrees = np.load(
-          os.path.join(opt.log_folder, 'replay_degrees_{policy}_{target_task}.npy'.format(policy=opt.replay_policy ,target_task=opt.resume_target_task))
+            os.path.join(opt.log_folder, 'replay_degrees_{policy}_{target_task}.npy'.format(policy=opt.replay_policy,
+                                                                                            target_task=opt.resume_target_task))
         ).tolist()
         degree_list = np.load(
-          os.path.join(opt.log_folder, 'degree_list_{policy}_{target_task}.npy'.format(policy=opt.replay_policy ,target_task=opt.resume_target_task))
+            os.path.join(opt.log_folder, 'degree_list_{policy}_{target_task}.npy'.format(policy=opt.replay_policy,
+                                                                                         target_task=opt.resume_target_task))
         ).tolist()
         print(len(replay_indices), len(replay_degrees), len(degree_list))
         print(np.unique(replay_degrees, return_counts=True))
@@ -454,14 +453,15 @@ def main():
 
     original_epochs = opt.epochs
 
-    for target_task in range(0 if opt.resume_target_task is None else opt.resume_target_task+1, opt.n_task):
+    for target_task in range(0 if opt.resume_target_task is None else opt.resume_target_task + 1, opt.n_task):
         opt.target_task = target_task
         model2 = copy.deepcopy(model)
 
         print('Start Training current task {}'.format(opt.target_task))
 
         # acquire replay sample indices
-        replay_indices, replay_degrees = set_replay_samples(opt, model, prev_indices=replay_indices, prev_degrees=replay_degrees, degree_list=degree_list)
+        replay_indices, replay_degrees = set_replay_samples(opt, model, prev_indices=replay_indices,
+                                                            prev_degrees=replay_degrees, degree_list=degree_list)
         print(len(replay_indices), len(replay_degrees))
         print(np.unique(replay_degrees, return_counts=True))
         print(degree_list)
@@ -470,15 +470,17 @@ def main():
         train_loader, curr_degree = set_loader(opt, replay_indices, replay_degrees)
         degree_list.append(curr_degree)
         np.save(
-          os.path.join(opt.log_folder, 'replay_indices_{policy}_{target_task}.npy'.format(policy=opt.replay_policy ,target_task=target_task)),
-          np.array(replay_indices))
+            os.path.join(opt.log_folder, 'replay_indices_{policy}_{target_task}.npy'.format(policy=opt.replay_policy,
+                                                                                            target_task=target_task)),
+            np.array(replay_indices))
         np.save(
-          os.path.join(opt.log_folder, 'replay_degrees_{policy}_{target_task}.npy'.format(policy=opt.replay_policy ,target_task=target_task)),
-          np.array(replay_degrees))
+            os.path.join(opt.log_folder, 'replay_degrees_{policy}_{target_task}.npy'.format(policy=opt.replay_policy,
+                                                                                            target_task=target_task)),
+            np.array(replay_degrees))
         np.save(
-          os.path.join(opt.log_folder, 'degree_list_{policy}_{target_task}.npy'.format(policy=opt.replay_policy ,target_task=target_task)),
-          np.array(degree_list))
-
+            os.path.join(opt.log_folder, 'degree_list_{policy}_{target_task}.npy'.format(policy=opt.replay_policy,
+                                                                                         target_task=target_task)),
+            np.array(degree_list))
 
         # training routine
         if target_task == 0 and opt.start_epoch is not None:
@@ -487,7 +489,6 @@ def main():
             opt.epochs = original_epochs
 
         for epoch in range(1, opt.epochs + 1):
-
             adjust_learning_rate(opt, optimizer, epoch)
 
             # train for one epoch
@@ -498,14 +499,15 @@ def main():
 
             # tensorboard logger
             logger.log_value('loss_{target_task}'.format(target_task=target_task), loss, epoch)
-            logger.log_value('learning_rate_{target_task}'.format(target_task=target_task), optimizer.param_groups[0]['lr'], epoch)
-
-
+            logger.log_value('learning_rate_{target_task}'.format(target_task=target_task),
+                             optimizer.param_groups[0]['lr'], epoch)
 
         # save the last model
         save_file = os.path.join(
-            opt.save_folder, 'last_{policy}_{target_task}.pth'.format(policy=opt.replay_policy ,target_task=target_task))
+            opt.save_folder,
+            'last_{policy}_{target_task}.pth'.format(policy=opt.replay_policy, target_task=target_task))
         save_model(model, optimizer, opt, opt.epochs, save_file)
+
 
 if __name__ == '__main__':
     main()

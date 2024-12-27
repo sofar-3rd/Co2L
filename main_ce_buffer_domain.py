@@ -16,6 +16,7 @@ import torchvision
 from torch.utils.data import Dataset, Subset, WeightedRandomSampler, ConcatDataset
 from torchvision import transforms, datasets
 
+
 def set_loader(opt, replay_indices, replay_degrees, degree_list):
     # construct data loader
     class FixedRotation(object):
@@ -45,22 +46,22 @@ def set_loader(opt, replay_indices, replay_degrees, degree_list):
     for degree, count in zip(unique_degrees, unique_counts):
         mask = np.array(replay_degrees) == degree
         masked_replay_indices = np.array(replay_indices)[mask]
-        masked_weights = [1./count] * len(masked_replay_indices)
+        masked_weights = [1. / count] * len(masked_replay_indices)
         weights += masked_weights
         prev_train_dataset = datasets.MNIST(root=opt.data_folder,
                                             transform=
-                                              transforms.Compose([
+                                            transforms.Compose([
                                                 FixedRotation(degree),
                                                 transforms.RandomResizedCrop(size=28, scale=(0.7, 1.)),
                                                 transforms.ToTensor()
-                                              ])
+                                            ])
                                             ,
                                             download=True)
         subsets.append(Subset(prev_train_dataset, masked_replay_indices.tolist()))
     _train_dataset = datasets.MNIST(root=opt.data_folder, transform=transforms.Compose([
-                                                FixedRotation(degree_list[-1]),
-                                                transforms.ToTensor()
-                                              ]), download=True)
+        FixedRotation(degree_list[-1]),
+        transforms.ToTensor()
+    ]), download=True)
     train_dataset = ConcatDataset([*subsets, _train_dataset])
     weights += [1. / len(_train_dataset)] * len(_train_dataset)
 
@@ -76,7 +77,6 @@ def set_loader(opt, replay_indices, replay_degrees, degree_list):
     val_dataset = ConcatDataset(val_sets)
     print('val set size', len(val_dataset))
 
-
     train_sampler = WeightedRandomSampler(torch.Tensor(weights), len(weights))
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=opt.batch_size, shuffle=(train_sampler is None),
@@ -86,5 +86,3 @@ def set_loader(opt, replay_indices, replay_degrees, degree_list):
         num_workers=8, pin_memory=True)
 
     return train_loader, val_loader
-
-

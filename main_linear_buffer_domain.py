@@ -85,7 +85,7 @@ def parse_option():
     for it in iterations:
         opt.lr_decay_epochs.append(int(it))
 
-    opt.model_name = '{}_{}_lr_{}_decay_{}_bsz_{}'.\
+    opt.model_name = '{}_{}_lr_{}_decay_{}_bsz_{}'. \
         format(opt.dataset, opt.model, opt.learning_rate, opt.weight_decay,
                opt.batch_size)
 
@@ -109,8 +109,6 @@ def parse_option():
         opt.cls_per_task = 10
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
-
-
 
     opt.origin_ckpt = opt.ckpt
     opt.ckpt = os.path.join(opt.ckpt, 'last_random_{target_task}.pth'.format(target_task=opt.target_task))
@@ -200,11 +198,11 @@ def train(train_loader, model, classifier, criterion, optimizer, epoch, opt):
                   'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'loss {loss.val:.3f} ({loss.avg:.3f})\t'
                   'Acc@1 {top1:.3f}'.format(
-                   epoch, idx + 1, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses, top1=acc/cnt*100.))
+                epoch, idx + 1, len(train_loader), batch_time=batch_time,
+                data_time=data_time, loss=losses, top1=acc / cnt * 100.))
             sys.stdout.flush()
 
-    return losses.avg, acc/cnt*100.
+    return losses.avg, acc / cnt * 100.
 
 
 def validate(val_loader, model, classifier, criterion, opt):
@@ -217,7 +215,7 @@ def validate(val_loader, model, classifier, criterion, opt):
     top1 = AverageMeter()
 
     corr = torch.zeros(opt.n_cls)
-    cnt  = torch.zeros(opt.n_cls)
+    cnt = torch.zeros(opt.n_cls)
 
     with torch.no_grad():
         end = time.time()
@@ -249,14 +247,12 @@ def validate(val_loader, model, classifier, criterion, opt):
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                       'Acc@1 {top1:.3f}'.format(
-                       idx, len(val_loader), batch_time=batch_time,
-                       loss=losses, top1=(corr.sum()/cnt.sum()).item()*100.))
-                print((torch.sum(corr)/torch.sum(cnt)).item()*100.)
+                    idx, len(val_loader), batch_time=batch_time,
+                    loss=losses, top1=(corr.sum() / cnt.sum()).item() * 100.))
+                print((torch.sum(corr) / torch.sum(cnt)).item() * 100.)
 
-
-
-    print(' * Acc@1 {top1:.3f}'.format(top1=(corr.sum()/cnt.sum()).item()*100.))
-    return losses.avg, top1.avg, corr.numpy(), cnt.numpy(), (corr.sum()/cnt.sum()).item()*100.
+    print(' * Acc@1 {top1:.3f}'.format(top1=(corr.sum() / cnt.sum()).item() * 100.))
+    return losses.avg, top1.avg, corr.numpy(), cnt.numpy(), (corr.sum() / cnt.sum()).item() * 100.
 
 
 def main():
@@ -279,7 +275,7 @@ def main():
 
     # build optimizer
     optimizer = set_optimizer(opt, classifier)
-    print( optimizer.param_groups[0]['lr'])
+    print(optimizer.param_groups[0]['lr'])
 
     # tensorboard
     writer = SummaryWriter(log_dir=opt.tb_folder)
